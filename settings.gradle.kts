@@ -5,6 +5,5 @@ rootProject.name = "AliucordPlugins"
 
 // Plugins are included like this
 include(
-    "PlusReact",
-    "MyFirstPatch"
+    "PlusReact"
 )

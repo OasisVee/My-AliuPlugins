@@ -10,8 +10,7 @@ import com.discord.stores.StoreStream
 import com.discord.utilities.messagesend.MessageRequest
 import com.discord.utilities.rest.RestAPI
 import com.discord.api.message.Message as ApiMessage
-import com.discord.api.emoji.Emoji
-import com.discord.models.guild.Guild
+import java.net.URLEncoder
 
 @AliucordPlugin
 class PlusReact : Plugin() {
@@ -54,10 +53,12 @@ class PlusReact : Plugin() {
         val emoteData = findEmoteData(emoteName)
         if (emoteData != null) {
             try {
+                // URL encode the emoji as per Discord API requirements
+                val encodedEmoji = URLEncoder.encode("${emoteData.name}:${emoteData.id}", "UTF-8")
                 RestAPI.api.addReaction(
                     message.channelId,
                     message.id,
-                    "<:${emoteData.name}:${emoteData.id}>" // Format for custom emojis
+                    encodedEmoji
                 )
             } catch (e: Exception) {
                 Utils.showToast("Failed to add reaction: ${e.message}")

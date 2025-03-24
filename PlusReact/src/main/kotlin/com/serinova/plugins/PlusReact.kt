@@ -11,6 +11,8 @@ import com.discord.utilities.messagesend.MessageRequest
 import com.discord.utilities.rest.RestAPI
 import com.discord.models.emoji.Emoji
 import com.discord.stores.StoreMessages
+import com.discord.models.guild.GuildEmoji
+import com.discord.api.message.Message as ApiMessage
 
 @AliucordPlugin
 class BetterPlusReacts : Plugin() {
@@ -18,9 +20,9 @@ class BetterPlusReacts : Plugin() {
         val regex = Regex("^\\+:{1,5}([^:]+):$")
 
         patcher.patch(
-            MessageRequest::class.java.getDeclaredMethod("send", Message::class.java),
+            MessageRequest::class.java.getDeclaredMethod("send", ApiMessage::class.java),
             PreHook { param ->
-                val message = param.args[0] as? Message ?: return@PreHook
+                val message = param.args[0] as? ApiMessage ?: return@PreHook
                 val content = message.content
                 val match = regex.find(content)
                 if (match != null) {
@@ -44,7 +46,10 @@ class BetterPlusReacts : Plugin() {
 
     private fun getTargetMessage(channelId: Long, plusCount: Int): Message? {
         val messagesHolder = StoreStream.getStore(StoreMessages::class.java).getMessages(channelId)
-        val messages = messagesHolder?.sortedByDescending { it.timestamp.toEpochMillis() }?.toList()
+        val messages = messagesHolder
+            ?.map { it.value } // Get the Message objects from the map
+            ?.sortedByDescending { it.timestamp.toEpochMillis() }
+            ?.toList()
         return messages?.getOrNull(plusCount - 1)
     }
 

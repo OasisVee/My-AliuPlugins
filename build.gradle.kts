@@ -40,9 +40,9 @@ subprojects {
 
     // Fill out with your info
     aliucord {
-        author("DISCORD USERNAME", 123456789L)
-        updateUrl.set("https://raw.githubusercontent.com/USERNAME/REPONAME/builds/updater.json")
-        buildUrl.set("https://raw.githubusercontent.com/USERNAME/REPONAME/builds/%s.zip")
+        author("._.serinova._.", 967152107922792478L)
+        updateUrl.set("https://raw.githubusercontent.com/OasisVee/My-AliuPlugins/builds/updater.json")
+        buildUrl.set("https://raw.githubusercontent.com/OasisVee/My-AliuPlugins/builds/%s.zip")
     }
 
     android {

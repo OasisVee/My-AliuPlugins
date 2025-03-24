@@ -68,7 +68,7 @@ class PlusReact : Plugin() {
     private fun findEmote(emoteName: String): ModelEmoji? {
         return StoreStream.getGuilds().guilds.values
             .flatMap { it.emojis }
-            .find { it.getName().equals(emoteName, ignoreCase = true) }
+            .find { it.name.equals(emoteName, ignoreCase = true) }
             ?.let { ModelEmoji.fromEmoji(it) }
     }
 }

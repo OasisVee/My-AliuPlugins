@@ -9,13 +9,12 @@ import com.discord.models.message.Message
 import com.discord.stores.StoreStream
 import com.discord.utilities.messagesend.MessageRequest
 import com.discord.utilities.rest.RestAPI
-import com.discord.models.emoji.Emoji
 import com.discord.stores.StoreMessages
-import com.discord.models.guild.GuildEmoji
 import com.discord.api.message.Message as ApiMessage
+import com.discord.models.guild.GuildEmoji
 
 @AliucordPlugin
-class BetterPlusReacts : Plugin() {
+class PlusReact : Plugin() {
     override fun start(context: Context) {
         val regex = Regex("^\\+:{1,5}([^:]+):$")
 
@@ -47,20 +46,20 @@ class BetterPlusReacts : Plugin() {
     private fun getTargetMessage(channelId: Long, plusCount: Int): Message? {
         val messagesHolder = StoreStream.getStore(StoreMessages::class.java).getMessages(channelId)
         val messages = messagesHolder
-            ?.map { it.value } // Get the Message objects from the map
+            ?.map { it.value }
             ?.sortedByDescending { it.timestamp.toEpochMillis() }
             ?.toList()
         return messages?.getOrNull(plusCount - 1)
     }
 
     private fun reactWithEmote(message: Message, emoteName: String) {
-        val emote = findEmote(emoteName)
-        if (emote != null) {
+        val emoteData = findEmoteData(emoteName)
+        if (emoteData != null) {
             try {
                 RestAPI.api.addReaction(
                     message.channelId,
                     message.id,
-                    emote.toReactionString()
+                    "<:${emoteData.name}:${emoteData.id}>" // Format for custom emojis
                 )
             } catch (e: Exception) {
                 Utils.showToast("Failed to add reaction: ${e.message}")
@@ -70,10 +69,12 @@ class BetterPlusReacts : Plugin() {
         }
     }
 
-    private fun findEmote(emoteName: String): Emoji? {
+    private data class EmoteData(val id: String, val name: String)
+
+    private fun findEmoteData(emoteName: String): EmoteData? {
         return StoreStream.getGuilds().guilds.values
             .flatMap { it.emojis }
             .find { it.name.equals(emoteName, ignoreCase = true) }
-            ?.let { Emoji.fromModel(it) }
+            ?.let { EmoteData(it.id.toString(), it.name) }
     }
 }

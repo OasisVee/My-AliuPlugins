@@ -11,7 +11,6 @@ import com.discord.utilities.messagesend.MessageRequest
 import com.discord.utilities.rest.RestAPI
 import com.discord.stores.StoreMessages
 import com.discord.api.message.Message as ApiMessage
-import com.discord.models.guild.GuildEmoji
 
 @AliucordPlugin
 class PlusReact : Plugin() {
@@ -22,7 +21,7 @@ class PlusReact : Plugin() {
             MessageRequest::class.java.getDeclaredMethod("send", ApiMessage::class.java),
             PreHook { param ->
                 val message = param.args[0] as? ApiMessage ?: return@PreHook
-                val content = message.content
+                val content = message.content ?: return@PreHook
                 val match = regex.find(content)
                 if (match != null) {
                     val emoteName = match.groupValues[1]
@@ -44,8 +43,8 @@ class PlusReact : Plugin() {
     }
 
     private fun getTargetMessage(channelId: Long, plusCount: Int): Message? {
-        val messagesHolder = StoreStream.getStore(StoreMessages::class.java).getMessages(channelId)
-        val messages = messagesHolder
+        val messagesStore = StoreStream.getMessages()
+        val messages = messagesStore.getMessages(channelId)
             ?.map { it.value }
             ?.sortedByDescending { it.timestamp.toEpochMillis() }
             ?.toList()
@@ -73,8 +72,13 @@ class PlusReact : Plugin() {
 
     private fun findEmoteData(emoteName: String): EmoteData? {
         return StoreStream.getGuilds().guilds.values
-            .flatMap { it.emojis }
-            .find { it.name.equals(emoteName, ignoreCase = true) }
-            ?.let { EmoteData(it.id.toString(), it.name) }
+            .flatMap { guild -> guild.emojis }
+            .find { emoji -> emoji.name.equals(emoteName, ignoreCase = true) }
+            ?.let { emoji -> 
+                EmoteData(
+                    emoji.id.toString(), 
+                    emoji.name
+                ) 
+            }
     }
 }

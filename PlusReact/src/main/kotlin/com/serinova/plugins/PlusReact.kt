@@ -50,7 +50,7 @@ class PlusReact : Plugin() {
     }
 
     private fun reactWithEmote(message: Message, emoteName: String) {
-        val emoteData = findEmoteData(emoteName)
+        val emoteData = findEmoteInCurrentGuild(message.channelId, emoteName)
         if (emoteData != null) {
             try {
                 // URL encode the emoji as per Discord API requirements
@@ -64,31 +64,31 @@ class PlusReact : Plugin() {
                 Utils.showToast("Failed to add reaction: ${e.message}")
             }
         } else {
-            Utils.showToast("Emote not found: $emoteName")
+            Utils.showToast("Emote not found in current server: $emoteName")
         }
     }
 
     private data class EmoteData(val id: String, val name: String)
 
-    private fun findEmoteData(emoteName: String): EmoteData? {
-        // First, search through all guilds the user is currently in
-        val guilds = StoreStream.getGuilds().guilds.values
+    private fun findEmoteInCurrentGuild(channelId: Long, emoteName: String): EmoteData? {
+        // Get the current guild for the channel
+        val guildId = StoreStream.getChannels().getChannel(channelId)?.guildId
+            ?: return null
 
-        // Search all guilds for the emoji, case-insensitive
-        for (guild in guilds) {
-            val emoji = guild.emojis.find { emoji -> 
-                emoji.name.equals(emoteName, ignoreCase = true) 
-            }
-            
-            if (emoji != null) {
-                return EmoteData(
-                    emoji.id.toString(), 
-                    emoji.name
-                )
-            }
+        // Find the guild
+        val guild = StoreStream.getGuilds().getGuild(guildId)
+            ?: return null
+
+        // Search for the emoji in the current guild, case-insensitive
+        val emoji = guild.emojis.find { emoji -> 
+            emoji.name.equals(emoteName, ignoreCase = true) 
         }
-
-        // If not found in any guild, return null
-        return null
+        
+        return emoji?.let { 
+            EmoteData(
+                it.id.toString(), 
+                it.name
+            ) 
+        }
     }
 }

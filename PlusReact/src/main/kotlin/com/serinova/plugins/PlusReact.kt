@@ -9,7 +9,7 @@ import com.discord.models.message.Message
 import com.discord.stores.StoreStream
 import com.discord.utilities.messagesend.MessageRequest
 import com.discord.utilities.rest.RestAPI
-import com.discord.models.domain.emoji.ModelEmoji
+import com.discord.models.domain.emoji.GuildEmoji // Adjusted import
 import com.discord.stores.StoreMessagesHolder
 
 @AliucordPlugin
@@ -41,7 +41,7 @@ class PlusReact : Plugin() {
     }
 
     private fun getLastMessages(channelId: Long, count: Int): List<Message> {
-        val messagesHolder = StoreStream.getMessages().getMessagesByChannelId(channelId)
+        val messagesHolder = StoreStream.getMessages().getMessages(channelId) // Updated method
         return messagesHolder?.messagesList
             ?.asReversed()
             ?.take(count.coerceAtMost(5))
@@ -53,7 +53,7 @@ class PlusReact : Plugin() {
         if (emote != null) {
             try {
                 RestAPI.api.addReaction(
-                    message.channelId.toString(),
+                    message.channelId, // Ensure this is a Long
                     message.id,
                     emote.toReactionString()
                 )
@@ -65,10 +65,9 @@ class PlusReact : Plugin() {
         }
     }
 
-    private fun findEmote(emoteName: String): ModelEmoji? {
+    private fun findEmote(emoteName: String): GuildEmoji? { // Adjusted return type
         return StoreStream.getGuilds().guilds.values
             .flatMap { it.emojis }
-            .find { it.name.equals(emoteName, ignoreCase = true) }
-            ?.let { ModelEmoji.fromEmoji(it) }
+            .find { it.getName().equals(emoteName, ignoreCase = true) } // Use public method to access name
     }
 }

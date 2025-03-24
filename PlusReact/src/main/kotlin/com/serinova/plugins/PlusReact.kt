@@ -9,8 +9,9 @@ import com.discord.models.message.Message
 import com.discord.stores.StoreStream
 import com.discord.utilities.messagesend.MessageRequest
 import com.discord.utilities.rest.RestAPI
-import com.discord.stores.StoreMessages
 import com.discord.api.message.Message as ApiMessage
+import com.discord.api.emoji.Emoji
+import com.discord.models.guild.Guild
 
 @AliucordPlugin
 class PlusReact : Plugin() {
@@ -30,8 +31,6 @@ class PlusReact : Plugin() {
                     val targetMessage = getTargetMessage(channelId, plusCount)
                     if (targetMessage != null) {
                         reactWithEmote(targetMessage, emoteName)
-                        // Optionally delete the trigger message
-                        // RestAPI.api.deleteMessage(channelId, message.id)
                     }
                 }
             }
@@ -71,14 +70,24 @@ class PlusReact : Plugin() {
     private data class EmoteData(val id: String, val name: String)
 
     private fun findEmoteData(emoteName: String): EmoteData? {
-        return StoreStream.getGuilds().guilds.values
-            .flatMap { guild -> guild.emojis }
-            .find { emoji -> emoji.name.equals(emoteName, ignoreCase = true) }
-            ?.let { emoji -> 
-                EmoteData(
+        // First, search through all guilds the user is currently in
+        val guilds = StoreStream.getGuilds().guilds.values
+
+        // Search all guilds for the emoji, case-insensitive
+        for (guild in guilds) {
+            val emoji = guild.emojis.find { emoji -> 
+                emoji.name.equals(emoteName, ignoreCase = true) 
+            }
+            
+            if (emoji != null) {
+                return EmoteData(
                     emoji.id.toString(), 
                     emoji.name
-                ) 
+                )
             }
+        }
+
+        // If not found in any guild, return null
+        return null
     }
 }

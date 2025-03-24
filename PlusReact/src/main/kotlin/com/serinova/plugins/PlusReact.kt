@@ -11,12 +11,11 @@ import com.discord.utilities.messagesend.MessageRequest
 import com.discord.utilities.rest.RestAPI
 import com.discord.models.emoji.Emoji
 import com.discord.stores.StoreMessages
-import com.discord.models.guild.GuildEmoji
 
 @AliucordPlugin
-class PlusReact : Plugin() {
+class BetterPlusReacts : Plugin() {
     override fun start(context: Context) {
-        val regex = Regex("\\+:{1,5}([a-zA-Z0-9_]+):")
+        val regex = Regex("^\\+:{1,5}([^:]+):$")
 
         patcher.patch(
             MessageRequest::class.java.getDeclaredMethod("send", Message::class.java),
@@ -26,11 +25,13 @@ class PlusReact : Plugin() {
                 val match = regex.find(content)
                 if (match != null) {
                     val emoteName = match.groupValues[1]
-                    val plusCount = match.groupValues[0].count { it == '+' }
+                    val plusCount = content.takeWhile { it == '+' }.length
                     val channelId = message.channelId
-                    val messages = getLastMessages(channelId, plusCount)
-                    messages.forEach { msg ->
-                        reactWithEmote(msg, emoteName)
+                    val targetMessage = getTargetMessage(channelId, plusCount)
+                    if (targetMessage != null) {
+                        reactWithEmote(targetMessage, emoteName)
+                        // Optionally delete the trigger message
+                        // RestAPI.api.deleteMessage(channelId, message.id)
                     }
                 }
             }
@@ -41,13 +42,10 @@ class PlusReact : Plugin() {
         patcher.unpatchAll()
     }
 
-    private fun getLastMessages(channelId: Long, count: Int): List<Message> {
-        val messagesHolder = StoreStream.getStore(StoreMessages::class.java).getMessageByChannel(channelId)
-        return messagesHolder?.values
-            ?.sortedByDescending { it.timestamp.toEpochMillis() }
-            ?.take(count.coerceAtMost(5))
-            ?.reversed() // Keep the original order (oldest to newest) for reacting
-            ?: emptyList()
+    private fun getTargetMessage(channelId: Long, plusCount: Int): Message? {
+        val messagesHolder = StoreStream.getStore(StoreMessages::class.java).getMessages(channelId)
+        val messages = messagesHolder?.sortedByDescending { it.timestamp.toEpochMillis() }?.toList()
+        return messages?.getOrNull(plusCount - 1)
     }
 
     private fun reactWithEmote(message: Message, emoteName: String) {

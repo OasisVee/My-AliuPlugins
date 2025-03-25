@@ -5,5 +5,5 @@ rootProject.name = "My-AliuPlugins"
 
 // Plugins are included like this
 include(
-    "PlusReact"
+    "CustomUserBio"
 )

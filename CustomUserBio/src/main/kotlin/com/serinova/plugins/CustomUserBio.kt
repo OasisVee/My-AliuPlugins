@@ -1,98 +1,90 @@
-package com.example.plugins
+package com.serinova.plugins
 
-import com.aliucord.annotations.AliucordPlugin
-import com.aliucord.entities.Plugin
-import com.aliucord.patcher.after
-import com.discord.models.user.User
-import com.discord.stores.StoreStream
-import com.discord.widgets.user.profile.WidgetUserProfile
 import android.content.Context
-import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
+import com.aliucord.annotations.AliucordPlugin
+import com.aliucord.entities.Plugin
+import com.aliucord.patcher.Hook
+import com.discord.stores.StoreStream
+import com.discord.widgets.user.usersheet.WidgetUserSheet
+import com.discord.widgets.user.usersheet.WidgetUserSheetViewModel
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
 @AliucordPlugin
 class CustomUserBio : Plugin() {
-    // Storage for user custom information
-    private val userCustomInfoMap = mutableMapOf<Long, String>()
+    // Storage for user bios
+    private val userBioMap = mutableMapOf<Long, String>()
     private val gson = Gson()
-    private val PREFS_KEY = "custom_user_info"
+    private val PREFS_KEY = "user_bios"
 
-    override fun start() {
-        // Patch the user profile to add custom information
-        patcher.after<WidgetUserProfile>("configureHeader") { param ->
-            val profile = param.thisObject as WidgetUserProfile
-            val user = StoreStream.getUsers().getUser(profile.userId)
-            
-            user?.let {
-                addCustomUserInfo(profile, it)
+    override fun start(context: Context) {
+        // Patch the user sheet to add custom bio
+        patcher.patch(
+            WidgetUserSheet::class.java.getDeclaredMethod(
+                "configureUI", 
+                WidgetUserSheetViewModel.ViewState::class.java
+            ), 
+            Hook { cf ->
+                val viewState = cf.args[0] as WidgetUserSheetViewModel.ViewState.Loaded
+                val user = viewState.user
+                val scrollView = WidgetUserSheet.access$getBinding$p((cf.thisObject as WidgetUserSheet)).root as LinearLayout
+
+                // Create TextView for bio
+                val bioTextView = TextView(context).apply {
+                    val bio = getUserBio(user.id)
+                    text = bio
+                    textSize = 14f
+                    setPadding(30, 10, 30, 10)
+                }
+
+                // Add bio to the user sheet if not empty
+                if (bio.isNotBlank()) {
+                    val contentLayout = scrollView.findViewById<LinearLayout>(
+                        context.resources.getIdentifier(
+                            "user_sheet_content", 
+                            "id", 
+                            context.packageName
+                        )
+                    )
+                    contentLayout?.addView(bioTextView)
+                }
             }
-        }
+        )
     }
 
-    private fun addCustomUserInfo(profile: WidgetUserProfile, user: User) {
-        // Retrieve custom info for the user
-        val customInfo = getUserCustomInfo(user.id)
-        
-        if (customInfo.isNotBlank()) {
-            // Create a new TextView for custom info
-            val customInfoView = TextView(profile.context).apply {
-                text = customInfo
-                setTextColor(0xFF7289DA.toInt()) // Discord blurple color
-                textSize = 14f
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-            }
-
-            // Find the header container and add the custom info
-            val headerContainer = profile.view.findViewById<LinearLayout>(
-                profile.context.resources.getIdentifier(
-                    "profile_header_info_container", 
-                    "id", 
-                    profile.context.packageName
-                )
-            )
-            
-            headerContainer?.addView(customInfoView)
-        }
+    override fun stop(context: Context) {
+        patcher.unpatchAll()
     }
 
-    // Set custom info for a user
-    fun setCustomUserInfo(userId: Long, info: String) {
-        userCustomInfoMap[userId] = info
-        saveUserCustomInfo()
+    // Set bio for a user
+    fun setUserBio(userId: Long, bio: String) {
+        userBioMap[userId] = bio
+        saveUserBios()
     }
 
-    // Get custom info for a user
-    fun getUserCustomInfo(userId: Long): String {
-        return userCustomInfoMap[userId] ?: ""
+    // Get bio for a user
+    fun getUserBio(userId: Long): String {
+        return userBioMap[userId] ?: ""
     }
 
-    // Save user custom info to persistent storage
-    private fun saveUserCustomInfo() {
-        val json = gson.toJson(userCustomInfoMap)
+    // Save user bios to persistent storage
+    private fun saveUserBios() {
+        val json = gson.toJson(userBioMap)
         settings.setString(PREFS_KEY, json)
     }
 
-    // Load user custom info from persistent storage
-    private fun loadUserCustomInfo() {
+    // Load user bios from persistent storage
+    private fun loadUserBios() {
         val json = settings.getString(PREFS_KEY, "{}")
         val type = object : TypeToken<MutableMap<Long, String>>() {}.type
-        userCustomInfoMap.clear()
-        userCustomInfoMap.putAll(gson.fromJson(json, type))
-    }
-
-    override fun stop() {
-        // Unpatch when plugin is stopped
-        patcher.unpatchAll()
+        userBioMap.clear()
+        userBioMap.putAll(gson.fromJson(json, type))
     }
 
     // Initialize plugin
     init {
-        loadUserCustomInfo()
+        loadUserBios()
     }
 }
